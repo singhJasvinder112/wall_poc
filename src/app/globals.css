@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+:root {
+  --background: #eef4fc;
+  --foreground: #0f172a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #060c1c;
+    --foreground: #f1f5f9;
+  }
+}
+
+body {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(239, 99, 6, 0.1), rgba(239, 99, 6, 0))
+      no-repeat,
+    var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  body :has(.print-target) {
+    display: block !important;
+  }
+
+  body :has(.print-target) > *:not(:has(.print-target)):not(.print-target) {
+    display: none !important;
+  }
+
+  header,
+  aside,
+  nav,
+  button,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  input {
+    border: 0 !important;
+    padding: 0 !important;
+  }
+
+  .print-target {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .print-target * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-target section,
+  .print-target figure,
+  .print-target tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
