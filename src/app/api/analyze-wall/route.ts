@@ -50,44 +50,34 @@ Rules:
 - Set estimatedCostAed on EACH issue from the fitting line; name it in repairMethod.
 - Set estimatedRepairCostAed to the sum of item ranges.`;
 
-const CONSERVATIVE_RULES = `
-ANTI-FALSE-POSITIVE RULES (follow strictly — but do NOT miss obvious defects):
-1. Prefer FEWER findings. Clean / acceptable finish → issues=[] and overallAqlStatus "within_aql".
-2. Borderline / "looks a bit off" / macro-zoom fluff = IGNORE.
-3. SAQL visual distance is ~1 metre. Marks that would vanish at 1 m are NOT defects
-   (esp. faint sanding, slight shade, soft texture).
-4. Forbidden false flags: lighting gradients, shadows, glare, dust, fingerprints,
-   normal paint texture, slight roller stipple, JPEG noise, wet droplets alone.
-5. Do NOT spam improper_paint_finish for vague imperfection. If only vaguely imperfect → nothing.
-6. Silicon: neat continuous bead = fine. Report only obvious uneven width, gaps, peel-off,
-   bubbles, rough/messy termination, or clear discontinuity.
-7. MUST STILL REPORT when clearly visible (these are NOT false positives):
-   - Open gaps / missing sealant at wall–ceiling, wall–frame, or joints
-   - Cracks, chips, paint peeling, obvious paint damage
-   - Messy / discontinuous / peeled silicone beads
-   - Obvious shade patches or touch-up blotches visible from ~1 m
-8. overallAqlStatus: within_aql if issues=[]; outside_aql if any fail;
-   partial_measurement_needed if only clear needs_measurement.
-9. overallCondition: excellent/good when clean; fair/poor when real defects exist.
-10. Deduplicate: one physical problem = one issue entry.`;
+const JUDGING_RULES = `
+JUDGING RULES (apply to every SAQL category equally):
+1. Consistency: identical visual evidence → identical findings every time. No flip-flop.
+2. Match the EXAMPLES in the catalogue block (clean, bubbles, crack, damage, shade,
+   undulation, silicon finish/thickness, open gaps). Use them as patterns for ALL ids.
+3. Clean acceptable finish → issues=[] and overallAqlStatus "within_aql".
+4. Clear catalogue match → always report it (do not randomly skip).
+5. Prefer specific aqlDefectId over improper_paint_finish.
+6. One physical condition = one issue row.
+7. Ignore only glare, dust motes, fingerprints, JPEG noise — not raised paint bumps.
+8. overallCondition: excellent/good when clean; fair/poor when real defects exist.`;
 
 function buildInstructions(isVideo: boolean): string {
   const mediaKind = isVideo ? "walkthrough video" : "photo";
   const step2 = isVideo
-    ? "Watch the whole clip. Report ONLY clear SAQL paint/silicon defects. Note mm:ss. Skip anything doubtful."
-    : "Report ONLY clear SAQL paint/silicon defects in frame. If the finish looks acceptable, return issues=[]. Do not invent.";
+    ? "Watch the whole clip. Compare what you see to the EXAMPLES, then the catalogue ids. Note mm:ss."
+    : "Compare what you see to the EXAMPLES, then map to catalogue ids. Same evidence → same result.";
 
-  return `You are a conservative SOBHA QA/QC inspector reviewing a ${mediaKind} against SCL-SAQL-001 (Paint) and SCL-SAQL-002 (Silicon Application).
-Your job is accurate keep-out marking — NOT finding as many defects as possible.
-False positives waste contractor time. When in doubt, leave it out.
+  return `You are a SOBHA QA/QC inspector reviewing a ${mediaKind} against SCL-SAQL-001 (Paint) and SCL-SAQL-002 (Silicon Application).
+Be accurate and consistent across all defect types — do not over-focus on any single defect.
 
 STEP 1: Identify surface/zone and domain (paint / silicon / mixed / unknown).
 STEP 2: ${step2}
 STEP 3: For each REAL finding set aqlDefectId, aqlVerdict, acceptanceLimit, severity, cost.
-STEP 4: Set overallCondition and overallAqlStatus honestly (within_aql when clean).
+STEP 4: Set overallCondition and overallAqlStatus.
 If no painted surface or silicone joint is visible, set surfaceDetected to false.
 
-${CONSERVATIVE_RULES}
+${JUDGING_RULES}
 
 ${buildAqlPromptBlock()}
 ${RATE_CARD}
@@ -134,6 +124,8 @@ export async function POST(request: Request) {
   try {
     const { output } = await generateText({
       model: MODEL,
+      temperature: 0,
+      seed: 42,
       messages: [
         {
           role: "user",

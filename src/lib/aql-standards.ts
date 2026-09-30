@@ -303,24 +303,7 @@ export function buildAqlPromptBlock(): string {
 
   return `
 SOBHA SAQL DEFECT CATALOGUE (SCL-SAQL-001 Paint + SCL-SAQL-002 Silicon).
-Judge ONLY what is clearly visible. Map each REAL finding to the closest defect id below.
-Visual checks are as if standing ≥ 1 m under natural / ambient / artificial light.
-
-CRITICAL — DO NOT OVER-REPORT (false positives are worse than a miss):
-- Empty issues[] is CORRECT and preferred when the finish looks acceptable.
-- Report a defect ONLY if a trained QA inspector would almost certainly mark it on a keep-out form.
-- If unsure / ambiguous / only visible because of extreme close-up zoom → DO NOT report it.
-- NEVER invent defects. NEVER pad the list to look thorough.
-- Do NOT report: normal plaster texture, roller stipple, soft shadows, glare, reflections,
-  dust, construction dirt that is not finish damage, compression artefacts, slight colour
-  variation from lighting, or a clean continuous silicone bead.
-- Do NOT use improper_paint_finish as a catch-all for "something looks slightly imperfect".
-  That id is only for a clearly visible bad finish from ~1 m (obvious brush marks, patchy
-  coverage, orange-peel / roughness finish that stands out).
-- Close-up photos exaggerate tiny marks. Mentally step back to 1 m — if it would disappear
-  at that distance, it is NOT a defect under SAQL visual rules.
-- mm / flushness / straightness items: only "needs_measurement" when there is a CLEAR
-  visible gap, waviness, or uneven bead. Do not flag "maybe slightly off".
+Map each REAL finding to the closest defect id. Same photo → same findings every run.
 
 PAINT (SCL-SAQL-001):
 ${paint}
@@ -328,9 +311,61 @@ ${paint}
 SILICON (SCL-SAQL-002):
 ${silicon}
 
-aqlVerdict rules:
-- "fail" — unmistakable visual breach of a "Not allowed" / "Not visible from 1 m" limit.
-- "needs_measurement" — CLEAR visual suspicion against an mm/straightness limit (not a maybe).
-- "pass" — do not emit pass rows; omit clean items entirely.
+EXAMPLES (follow this style for ALL defect types — not only one category):
+
+Example A — CLEAN wall/ceiling: smooth or only very fine flat roller stipple, no raised
+  defects, no cracks, no drips
+  → issues: []
+  → overallAqlStatus: "within_aql"
+  → overallCondition: "excellent" or "good"
+
+Example B — Painted surface covered with many raised circular/oval bumps or blisters
+  (can look sandy/grainy or low-contrast white-on-white in a close-up). This is PAINT
+  BLISTERING, not an intentional decorative finish on SOBHA painted walls.
+  → one issue: aqlDefectId "paint_bubbles", aqlVerdict "fail",
+    acceptanceLimit "Not visible from 1 meter at any angle"
+  → overallAqlStatus: "outside_aql"
+  Do NOT return empty issues for this. Do NOT call it "normal texture" or "stipple".
+  NOT paint_bubbles: wet liquid droplets with bright specular highlights on top
+  (those sit on the surface like water).
+
+Example C — Thin line crack in plaster/paint
+  → aqlDefectId "paint_crack", aqlVerdict "fail", acceptanceLimit "Not Allowed"
+
+Example D — Chipped / scraped paint exposing substrate
+  → aqlDefectId "paint_damage", aqlVerdict "fail"
+
+Example E — Obvious patchy shade or visible touch-up blotch from normal viewing
+  → aqlDefectId "paint_shade_variation" or "paint_touch_up", aqlVerdict "fail"
+
+Example F — Clear waviness / waves / ridge along a painted wall plane
+  → aqlDefectId "paint_undulation", aqlVerdict "needs_measurement"
+  If a blister field AND a ridge are both visible, report BOTH (bubbles fail + undulation
+  needs_measurement), not only one.
+
+Example G — Patchy / dusty / uneven paint film, visible runs or drips, rough finish
+  → aqlDefectId "improper_paint_finish", aqlVerdict "fail"
+  (use this when finish is clearly bad but not a bubble field / crack)
+
+Example H — Messy / wavy / gappy silicone bead at vanity, jamb, or skirting
+  → aqlDefectId "uneven_silicon_application" or "silicon_rough_finish" /
+    "silicon_discontinuous" as fits, aqlVerdict "fail"
+
+Example I — Silicone bead looks uneven in width but camera cannot measure mm
+  → aqlDefectId matching zone thickness id, aqlVerdict "needs_measurement"
+
+Example J — Open dark gap at wall–ceiling or joinery with missing sealant/finish
+  → closest matching id (e.g. uneven_termination, silicon_discontinuous,
+    improper_paint_finish), aqlVerdict "fail"
+
+GENERAL RULES:
+- Prefer the specific catalogue id. Do not spam improper_paint_finish as a catch-all.
+- One physical condition = one issue entry (a whole blister field = one paint_bubbles row).
+- Ignore only: glare, dust motes, fingerprints, JPEG noise.
+- Do NOT ignore a full-frame field of raised paint bumps — that is Example B.
+- Do not invent defects. Do not randomly skip a clear match to an example above.
+- aqlVerdict "fail" | "needs_measurement" only; omit clean items (no "pass" rows).
+- overallAqlStatus: within_aql if issues=[]; outside_aql if any fail;
+  partial_measurement_needed if only needs_measurement.
 `;
 }

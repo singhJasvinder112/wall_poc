@@ -337,11 +337,10 @@ export default function HomePage() {
               type="button"
               onClick={() => setMode("upload")}
               aria-pressed={mode === "upload"}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors sm:px-4 ${
-                mode === "upload"
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors sm:px-4 ${mode === "upload"
                   ? "bg-white text-slate-900 shadow-xs dark:bg-white/10 dark:text-white"
                   : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
-              }`}
+                }`}
             >
               <ImagePlus className="size-4" />
               Upload
@@ -350,11 +349,10 @@ export default function HomePage() {
               type="button"
               onClick={() => setMode("history")}
               aria-pressed={mode === "history"}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors sm:px-4 ${
-                mode === "history"
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors sm:px-4 ${mode === "history"
                   ? "bg-white text-slate-900 shadow-xs dark:bg-white/10 dark:text-white"
                   : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
-              }`}
+                }`}
             >
               <History className="size-4" />
               History
@@ -394,11 +392,10 @@ export default function HomePage() {
                 }}
                 onDragLeave={() => setDragActive(false)}
                 onDrop={handleDrop}
-                className={`group relative flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
-                  dragActive
+                className={`group relative flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 text-center transition-colors ${dragActive
                     ? "border-[#ef6306] bg-[#ef6306]/5"
                     : "border-slate-200 hover:border-[#ef6306]/60 hover:bg-slate-50 dark:border-white/15 dark:hover:border-[#ef6306]/60 dark:hover:bg-white/5"
-                }`}
+                  }`}
               >
                 <input
                   ref={inputRef}
