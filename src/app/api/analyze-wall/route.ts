@@ -1,5 +1,5 @@
-import { google } from "@ai-sdk/google";
-import { generateText, Output } from "ai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { APICallError, generateText, Output, RetryError } from "ai";
 import { NextResponse } from "next/server";
 import { wallAnalysisSchema } from "@/lib/wall-analysis-schema";
 import { saveWallAnalysis } from "@/lib/db";
@@ -9,8 +9,23 @@ import { buildAqlPromptBlock } from "@/lib/aql-standards";
 
 export const maxDuration = 60;
 
-const MODEL = google("gemini-2.5-flash");
+const PRIMARY_MODEL_ID = "gemini-2.5-flash";
+// The fallback key's project doesn't have access to the pinned 2.5 model,
+// so it uses the "latest" alias instead, which resolves on any project.
+const FALLBACK_MODEL_ID = "gemini-flash-latest";
 const MAX_INLINE_BYTES = 15 * 1024 * 1024;
+
+function isQuotaExhaustedError(error: unknown): boolean {
+  // The SDK auto-retries 429s and then throws a RetryError wrapping the
+  // underlying APICallError(s) — unwrap it before checking the status.
+  if (RetryError.isInstance(error)) {
+    return error.errors.some(isQuotaExhaustedError);
+  }
+  if (!APICallError.isInstance(error)) return false;
+  if (error.statusCode === 429) return true;
+  const body = error.responseBody?.toLowerCase() ?? "";
+  return body.includes("resource_exhausted") || body.includes("quota");
+}
 
 const CAMERA_ITEMS = WALL_HANDOVER_SECTIONS.flatMap((section) =>
   section.items
@@ -121,9 +136,9 @@ export async function POST(request: Request) {
 
   const buffer = Buffer.from(await media.arrayBuffer());
 
-  try {
-    const { output } = await generateText({
-      model: MODEL,
+  const runAnalysis = (apiKey: string | undefined, modelId: string) =>
+    generateText({
+      model: createGoogleGenerativeAI({ apiKey })(modelId),
       temperature: 0,
       seed: 42,
       messages: [
@@ -151,6 +166,24 @@ export async function POST(request: Request) {
         schema: wallAnalysisSchema,
       }),
     });
+
+  try {
+    let output;
+    try {
+      ({ output } = await runAnalysis(
+        process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+        PRIMARY_MODEL_ID,
+      ));
+    } catch (error) {
+      const fallbackKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY_FALLBACK;
+      if (!fallbackKey || !isQuotaExhaustedError(error)) {
+        throw error;
+      }
+      console.warn(
+        "Primary Google AI key quota exhausted, retrying with fallback key",
+      );
+      ({ output } = await runAnalysis(fallbackKey, FALLBACK_MODEL_ID));
+    }
 
     const stored = { ...output, thumbnail };
 
